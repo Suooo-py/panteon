@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050505">
+<meta name="color-scheme" content="dark">
+<title>EL ARCHIVO // TERMINAL DE REALIDAD CERO</title>
+<style>
+  :root{
+    --bg:#050505; --ok:#00ff66; --err:#ff2a2a; --ent:#ff66b2;
+    --c:var(--ok);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--c);
+    font-family:"Courier New",Courier,"Lucida Console",monospace;font-size:16px;line-height:1.55}
+  body{overflow-x:hidden}
+  /* ---------- Móvil ---------- */
+  :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+    -webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+  html{scroll-padding-top:env(safe-area-inset-top,0px)}
+  button,input{touch-action:manipulation}
+  .row input,button.go{min-height:44px}
+  @media (max-width:560px){
+    html,body{font-size:15px}
+    .row{margin:1.1em 0}
+    .row input{flex-basis:100%;font-size:16px}
+    button.go,#trace{width:100%}
+  }
+
+  /* ---------- CRT ---------- */
+  body::before{content:"";position:fixed;inset:0;z-index:50;pointer-events:none;
+    background:repeating-linear-gradient(to bottom,rgba(0,0,0,0) 0,rgba(0,0,0,0) 2px,rgba(0,0,0,.28) 3px,rgba(0,0,0,0) 4px);}
+  body::after{content:"";position:fixed;inset:0;z-index:51;pointer-events:none;
+    background:radial-gradient(ellipse at center,rgba(0,0,0,0) 55%,rgba(0,0,0,.75) 100%);
+    animation:flicker 5s infinite;}
+  @keyframes flicker{0%,100%{opacity:1}46%{opacity:1}47%{opacity:.82}48%{opacity:1}73%{opacity:.9}74%{opacity:1}}
+  #screen{min-height:100%;padding:clamp(18px,4vw,48px);max-width:860px;margin:0 auto;
+    text-shadow:0 0 6px color-mix(in srgb,var(--c) 55%,transparent);animation:hum 7s infinite}
+  @keyframes hum{0%,100%{transform:translateX(0)}50%{transform:translateX(.6px)}52%{transform:translateX(-.6px)}}
+
+  /* ---------- Texto ---------- */
+  .banner{border:1px solid var(--err);color:var(--err);padding:.6em .9em;margin:0 0 1.6em;
+    text-shadow:0 0 8px rgba(255,42,42,.6);letter-spacing:.04em;font-size:.95rem;word-break:break-word}
+  .banner .jit{display:inline-block;animation:jit 2.4s steps(1) infinite}
+  @keyframes jit{0%,92%{transform:none}94%{transform:translate(2px,-1px)}96%{transform:translate(-3px,1px)}98%{transform:translate(1px,0)}}
+  h2{font-size:1.05rem;font-weight:normal;margin:0 0 1em;color:var(--c)}
+  p{margin:.4em 0}
+  .dim{opacity:.6}
+  .log{border-left:2px solid var(--c);padding:.2em 0 .2em 1em;margin:1.2em 0}
+  .log b{font-weight:normal;color:var(--ent);text-shadow:0 0 8px rgba(255,102,178,.6)}
+  .err{color:var(--err);text-shadow:0 0 8px rgba(255,42,42,.7);min-height:1.6em;margin-top:1em}
+  .shake{animation:shake .4s}
+  @keyframes shake{0%,100%{transform:none}20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(3px)}}
+
+  /* ---------- Formulario ---------- */
+  .row{display:flex;flex-wrap:wrap;align-items:baseline;gap:.4em .8em;margin:.9em 0}
+  .row label{flex:0 0 auto;min-width:19ch}
+  .row input{flex:1 1 14ch;min-width:0;background:transparent;border:0;border-bottom:1px solid var(--c);
+    color:var(--c);font:inherit;padding:.2em .3em;outline:none;caret-color:var(--c);
+    text-shadow:inherit;letter-spacing:.12em}
+  .row input:focus{background:color-mix(in srgb,var(--c) 10%,transparent);border-bottom-width:2px}
+  button.go{margin-top:1.2em;background:transparent;color:var(--c);border:1px solid var(--c);
+    font:inherit;padding:.55em 1.3em;cursor:pointer;letter-spacing:.1em;text-shadow:inherit}
+  button.go:hover,button.go:focus-visible{background:var(--c);color:var(--bg);text-shadow:none;outline:none}
+  .hidden{display:none}
+  .cursor::after{content:"█";animation:blink 1s steps(1) infinite;margin-left:2px}
+  @keyframes blink{50%{opacity:0}}
+
+  /* ---------- Reveal ---------- */
+  .appear{animation:appear .9s ease-out both}
+  @keyframes appear{from{opacity:0;filter:blur(3px)}to{opacity:1;filter:none}}
+
+  /* ---------- Glitch intenso (2 s) ---------- */
+  body.glitching #screen{animation:gl 0.12s steps(2) infinite}
+  body.glitching{animation:bgflash .5s steps(1) infinite}
+  @keyframes gl{
+    0%{transform:translate(-6px,2px) skewX(4deg);filter:hue-rotate(0)}
+    25%{transform:translate(8px,-3px) skewX(-6deg)}
+    50%{transform:translate(-3px,5px) scaleY(1.03)}
+    75%{transform:translate(5px,-4px) skewX(3deg)}
+    100%{transform:translate(-8px,1px)}}
+  @keyframes bgflash{0%{background:#050505}20%{background:#1a0000}40%{background:#1a0010}60%{background:#050505}80%{background:#0d0008}}
+  body.glitching #screen *{text-shadow:3px 0 rgba(255,42,42,.9),-3px 0 rgba(255,102,178,.9)}
+
+  /* ---------- Pantalla final ---------- */
+  .coords{border:1px solid var(--err);padding:1em;margin:1.4em 0;color:var(--err);
+    text-shadow:0 0 10px rgba(255,42,42,.7);word-break:break-word}
+  .compass{color:var(--ent);text-shadow:0 0 10px rgba(255,102,178,.7);font-size:1.05rem;margin:1.2em 0}
+  .warn{position:relative;display:block;margin:2.2em 0 3em;padding:1em;border-top:1px dashed var(--ent);
+    border-bottom:1px dashed var(--ent);color:var(--ent);text-shadow:0 0 8px rgba(255,102,178,.7)}
+  .warn::before,.warn::after{content:attr(data-text);position:absolute;inset:1em 1em auto 1em;pointer-events:none}
+  .warn::before{color:var(--err);animation:g1 2.8s steps(1) infinite;clip-path:inset(0 0 55% 0)}
+  .warn::after{color:var(--ok);animation:g2 3.3s steps(1) infinite;clip-path:inset(55% 0 0 0)}
+  @keyframes g1{0%,88%{transform:none;opacity:0}90%{transform:translate(-4px,0);opacity:.9}94%{transform:translate(3px,1px);opacity:.9}97%{opacity:0}}
+  @keyframes g2{0%,80%{transform:none;opacity:0}82%{transform:translate(4px,0);opacity:.9}86%{transform:translate(-3px,-1px);opacity:.9}90%{opacity:0}}
+
+  /* ---------- Easter egg ---------- */
+  #egg{position:fixed;right:10px;bottom:8px;z-index:60;background:none;border:0;
+    color:var(--ent);font:inherit;font-size:.7rem;opacity:.07;cursor:pointer;padding:6px}
+  #egg:hover,#egg:focus-visible{opacity:.55;outline:none}
+  #heart{position:fixed;inset:0;z-index:100;background:#050505;display:none;
+    align-items:center;justify-content:center}
+  #heart.on{display:flex}
+  #heart span{font-size:min(38vw,260px);color:var(--ent);
+    text-shadow:0 0 30px rgba(255,102,178,.9),0 0 80px rgba(255,102,178,.5);
+    animation:beat .66s ease-in-out infinite}
+  @keyframes beat{0%,100%{transform:scale(.85)}18%{transform:scale(1.15)}36%{transform:scale(.92)}54%{transform:scale(1.08)}}
+
+  /* ---------- Expedientes ---------- */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:1.6em 0}
+  @media (max-width:560px){.grid{grid-template-columns:1fr}}
+  .card{border:1px solid var(--c);padding:.8em 1em;background:color-mix(in srgb,var(--c) 5%,transparent)}
+  .card h3{margin:0 0 .5em;font-size:1rem;font-weight:normal;letter-spacing:.06em}
+  .card p{margin:.15em 0;font-size:.92rem}
+  .card.s4{border-color:var(--ent);color:var(--ent);text-shadow:0 0 8px rgba(255,102,178,.7);
+    box-shadow:0 0 14px rgba(255,102,178,.25) inset}
+  .card.s4 h3{animation:jit 2.4s steps(1) infinite}
+  .trace{border:1px solid var(--err);border-left-width:5px;padding:1em 1.1em;margin:1.8em 0;
+    color:var(--ok);background:rgba(255,42,42,.06)}
+  .trace h3{margin:0 0 .6em;font-size:1rem;font-weight:normal;color:var(--err);
+    text-shadow:0 0 8px rgba(255,42,42,.7);letter-spacing:.04em}
+  .trace p{margin:0}
+  /* ---------- Transmisión y rastreo ---------- */
+  .tx{border:1px solid var(--ent);color:var(--ent);text-shadow:0 0 8px rgba(255,102,178,.7);
+    padding:1em;margin:1.8em 0;min-height:10.5em;background:rgba(255,102,178,.05)}
+  #trace{display:block;width:100%;margin:1em 0 3em;background:transparent;color:var(--ent);
+    border:2px solid var(--ent);font:inherit;font-size:1rem;letter-spacing:.06em;padding:.9em 1em;cursor:pointer;
+    text-shadow:0 0 10px rgba(255,102,178,.9);box-shadow:0 0 18px rgba(255,102,178,.5);
+    animation:glow 1.6s ease-in-out infinite}
+  #trace:hover,#trace:focus-visible{background:var(--ent);color:#050505;text-shadow:none;outline:none}
+  @keyframes glow{50%{box-shadow:0 0 34px rgba(255,102,178,.9)}}
+  #heart{flex-direction:column;gap:.4em;padding:1.5em;text-align:center;cursor:pointer}
+  #heart span{font-size:min(22vw,130px);color:#ff55a3;text-shadow:0 0 24px #ff55a3,0 0 60px rgba(255,85,163,.5)}
+  .axo{width:min(74vw,340px);height:auto;margin:.2em 0;
+    filter:drop-shadow(0 0 4px #ff55a3) drop-shadow(0 0 16px #ff55a3);animation:axo 2.6s ease-in-out infinite}
+  @keyframes axo{50%{filter:drop-shadow(0 0 6px #ff55a3) drop-shadow(0 0 30px #ff55a3)}}
+  @media (prefers-reduced-motion:reduce){.axo{animation:none}}
+  #heart pre{margin:0;color:var(--ent);font-size:clamp(11px,3.2vw,16px);line-height:1.2;text-align:left;
+    text-shadow:0 0 10px rgba(255,102,178,.8)}
+  #heart p{color:var(--ent);text-shadow:0 0 10px rgba(255,102,178,.8);max-width:34em;margin:.8em 0 0}
+
+  @media (prefers-reduced-motion:reduce){
+    body::after,#screen,.banner .jit,.warn::before,.warn::after,.cursor::after{animation:none}
+  }
+</style>
+</head>
+<body>
+<main id="screen">
+
+  <div class="banner" role="alert">
+    [SISTEMA DE CONTENCIÓN — REALIDAD <span class="jit">CERO</span> | ESTADO: BRECHA DETECTADA]
+  </div>
+
+  <!-- ================= CERRADURA 1 ================= -->
+  <section id="lock1">
+    <h2>EL ARCHIVO // PRIMER NODO <span class="dim">(bloqueado)</span></h2>
+    <p class="dim">Introduce las credenciales del fragmento para continuar.</p>
+    <div class="row">
+      <label for="f-cred" style="flex-basis:100%">CREDENCIAL COMBINADA (FRAGMENTO + CLAVE DEL SOBRE #1)</label>
+      <input id="f-cred" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength=32>
+    </div>
+    <button class="go" id="go1" type="button">DESBLOQUEAR NODO</button>
+    <div class="err" id="err1" aria-live="polite"></div>
+  </section>
+
+  <!-- ================= NIVEL 1 + CERRADURA 2 ================= -->
+  <section id="lvl1" class="hidden">
+    <h2>NODO 01 // REGISTRO CLASIFICADO</h2>
+    <div class="log">
+      <p>Conexión establecida con los tres supervivientes de la detonación anterior
+        (Kael, Sora y Vaelen).</p>
+      <p>El cuarto asiento sigue vacío en los registros, pero su <b>firma energética está activa</b>.</p>
+    </div>
+
+    <div class="grid">
+      <article class="card"><h3>SUJETO 01: KAEL</h3>
+        <p>Rol: Estratega</p><p>Estado: Escapó antes del colapso</p></article>
+      <article class="card"><h3>SUJETO 02: SORA</h3>
+        <p>Rol: Guardián de Claves</p><p>Estado: Escapó antes del colapso</p></article>
+      <article class="card"><h3>SUJETO 03: VAELEN</h3>
+        <p>Rol: Explorador</p><p>Estado: Escapó antes del colapso</p></article>
+      <article class="card s4"><h3>SUJETO 04: [BORRADO]</h3>
+        <p>Rol: INFILTRADO</p><p>Estado: ACTIVO EN ESTA REALIDAD</p></article>
+    </div>
+
+    <div class="trace">
+      <h3>&gt; RASTRO FÍSICO DETECTADO (NODO #2)</h3>
+      <p>Nuestros caminos no se cruzaron por primera vez bajo este cielo pixelado. Regresad al patio de los primeros pasos, al templo de pizarra y campanas donde nuestras mentes aprendieron a leer el mundo juntas antes de que existiera el código. Tras los muros de vuestra infancia dormida aguarda el segundo paquete físico.</p>
+    </div>
+
+    <h2 style="margin-top:2em">CERRADURA 2 // VERIFICACIÓN ELEMENTAL Y DE CAMPO</h2>
+    <div class="row">
+      <label for="f-sobre" style="flex-basis:100%">CLAVE RECUPERADA EN EL COLEGIO (SOBRE #2)</label>
+      <input id="f-sobre" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="24">
+    </div>
+    <div class="row">
+      <label for="f-seq" style="flex-basis:100%">SECUENCIA ELEMENTAL DE SORA</label>
+      <input id="f-seq" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="4">
+    </div>
+    <button class="go" id="go2" type="button">VERIFICAR</button>
+    <div class="err" id="err2" aria-live="polite"></div>
+  </section>
+
+  <!-- ================= NIVEL 2 (FINAL) ================= -->
+  <section id="lvl2" class="hidden">
+    <h2>NODO 04 // CÁMARA SUBTERRÁNEA LOCALIZADA</h2>
+
+    <div class="coords">
+      <!--
+        ╔══════════════════════════════════════════════════════════╗
+        ║  RELLENA AQUÍ LAS COORDENADAS FINALES DE MINECRAFT       ║
+        ║  Cambia PON_X, PON_Y y PON_Z por tus números.            ║
+        ║  Ejemplo: X: 1204 / Y: -38 / Z: -877                     ║
+        ╚══════════════════════════════════════════════════════════╝
+      -->
+      [COORDENADAS DE LA CÁMARA SUBTERRÁNEA]<br>X: [PON_X] | Y: [PON_Y] | Z: [PON_Z]
+    </div>
+
+    <p class="compass">PROTOCOLO DE APERTURA:<br>
+      OESTE (1) -&gt; SUR (2) -&gt; ESTE (3) -&gt; NORTE (4)</p>
+
+    <div class="tx" aria-live="polite"><span id="tx"></span><span class="cursor"></span></div>
+    <button id="trace" type="button">[ RASTREAR ORIGEN DE LA INTERFERENCIA 04 ]</button>
+  </section>
+
+</main>
+
+<div id="heart" role="dialog" aria-label="Señal residual" tabindex="-1">
+  <span>❤</span>
+<svg class="axo" viewBox="0 0 300 220" role="img" aria-label="Ajolote con tres branquias a cada lado">
+  <defs>
+    <g id="gl" fill="none" stroke="#ff55a3" stroke-width="3" stroke-linecap="round">
+      <path d="M90 98 Q62 76 34 62 M74 85 L64 64 M58 75 L46 56 M46 67 L32 52"/>
+      <path d="M82 122 Q52 118 26 110 M66 120 L58 100 M50 118 L40 98 M36 114 L24 96"/>
+      <path d="M86 146 Q58 156 34 172 M70 152 L66 174 M56 158 L48 178 M44 166 L30 184"/>
+    </g>
+  </defs>
+  <g fill="none" stroke="#ff55a3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <use href="#gl"/>
+    <use href="#gl" transform="translate(300 0) scale(-1 1)"/>
+    <path d="M80 130 C80 80 115 62 150 62 C185 62 220 80 220 130 C220 170 190 190 150 190 C110 190 80 170 80 130 Z" fill="rgba(255,85,163,.08)"/>
+    <path d="M122 150 Q150 168 178 150"/>
+  </g>
+  <g fill="#ff55a3">
+    <circle cx="125" cy="115" r="4.5"/><circle cx="175" cy="115" r="4.5"/>
+    <circle cx="144" cy="133" r="1.6"/><circle cx="156" cy="133" r="1.6"/>
+  </g>
+</svg>
+  <p>[ SEÑAL RESIDUAL: AGENTE 04 ] - “Siempre estuve aquí con vosotros”</p>
+</div>
+
+<script>
+(() => {
+  /* =============== CONFIGURACIÓN =============== */
+  const CFG = { cred:["04-CENIZA-99","4-CENIZA-99","CENIZA-99-04","04CENIZA-99","4CENIZA-99"], sobre:"NODO-04", seq:"4162" };
+  const squash = s => s.replace(/\s+/g,"").toUpperCase();
+  const norm = s => s.trim().toUpperCase();
+  const $ = id => document.getElementById(id);
+
+  /* =============== AUDIO (Web Audio API) =============== */
+  let ac = null;
+  function ctx(){
+    if(!ac){ try{ ac = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+    if(ac && ac.state==="suspended") ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, type="square", vol=.04, slide=0){
+    const a = ctx(); if(!a) return;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, a.currentTime);
+    if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(30,freq+slide), a.currentTime+dur);
+    g.gain.setValueAtTime(vol, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001, a.currentTime+dur);
+    o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime+dur);
+  }
+  function noise(dur, vol=.08){
+    const a = ctx(); if(!a) return;
+    const buf = a.createBuffer(1, a.sampleRate*dur, a.sampleRate), d = buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i] = (Math.random()*2-1)*(1-i/d.length);
+    const s = a.createBufferSource(), g = a.createGain();
+    s.buffer = buf; g.gain.value = vol; s.connect(g).connect(a.destination); s.start();
+  }
+  const sfx = {
+    key:  () => tone(700+Math.random()*300, .035, "square", .025),
+    fail: () => { tone(160,.5,"sawtooth",.07,-90); setTimeout(()=>tone(110,.5,"sawtooth",.07,-60),180); noise(.35,.06); },
+    ok:   () => { tone(520,.1,"sine",.06); setTimeout(()=>tone(780,.18,"sine",.06),110); },
+    glitch: () => { noise(2,.1); tone(70,2,"sawtooth",.05,40); },
+    alarm: () => {
+      const a = ctx(); if(!a) return;
+      const o = a.createOscillator(), g = a.createGain(), t = a.currentTime;
+      o.type = "sawtooth";
+      for(let i=0;i<8;i++) o.frequency.setValueAtTime(i%2 ? 520 : 880, t+i*.25);
+      g.gain.setValueAtTime(.06, t); g.gain.setValueAtTime(.06, t+1.8); g.gain.linearRampToValueAtTime(0, t+2);
+      o.connect(g).connect(a.destination); o.start(t); o.stop(t+2);
+    },
+    beat: () => { tone(60,.18,"sine",.2,-20); setTimeout(()=>tone(55,.2,"sine",.16,-15),170); }
+  };
+  document.addEventListener("input", e => { if(e.target.tagName==="INPUT") sfx.key(); });
+  document.addEventListener("pointerdown", () => ctx(), { once:true });
+
+  /* =============== UTILIDADES =============== */
+  function fail(errEl, section){
+    errEl.textContent = "ACCESO DENEGADO. RASTRO DE ENTIDAD DETECTADO.";
+    section.classList.remove("shake"); void section.offsetWidth; section.classList.add("shake");
+    document.documentElement.style.setProperty("--c","#ff2a2a");
+    setTimeout(()=>document.documentElement.style.setProperty("--c","#00ff66"), 450);
+    sfx.fail();
+  }
+  function show(el){ el.classList.remove("hidden"); el.classList.add("appear"); }
+
+  /* =============== CERRADURA 1 =============== */
+  function tryLock1(){
+    if(CFG.cred.includes(squash($("f-cred").value))){
+      sfx.ok();
+      $("err1").textContent = "";
+      $("lock1").classList.add("hidden");
+      show($("lvl1"));
+      $("f-sobre").focus();
+    } else fail($("err1"), $("lock1"));
+  }
+  $("go1").addEventListener("click", tryLock1);
+  $("f-cred").addEventListener("keydown", e => { if(e.key==="Enter") tryLock1(); });
+
+  /* =============== CERRADURA 2 =============== */
+  function tryLock2(){
+    if(norm($("f-sobre").value)===CFG.sobre && $("f-seq").value.trim()===CFG.seq){
+      $("err2").textContent = "";
+      runGlitch();
+    } else fail($("err2"), $("lvl1"));
+  }
+  $("go2").addEventListener("click", tryLock2);
+  ["f-sobre","f-seq"].forEach(i => $(i).addEventListener("keydown", e => { if(e.key==="Enter") tryLock2(); }));
+
+  /* =============== GLITCH FINAL (2 s) =============== */
+  function runGlitch(){
+    const root = document.documentElement, cols = ["#00ff66","#ff2a2a","#ff66b2","#ff2a2a","#00ff66","#ff66b2"];
+    let n = 0;
+    document.body.classList.add("glitching");
+    sfx.glitch(); sfx.alarm();
+    const t = setInterval(() => { root.style.setProperty("--c", cols[n++ % cols.length]); }, 90);
+    setTimeout(() => {
+      clearInterval(t);
+      document.body.classList.remove("glitching");
+      root.style.setProperty("--c", "#00ff66");
+      $("lvl1").classList.add("hidden");
+      show($("lvl2"));
+      window.scrollTo(0,0); startTx();
+    }, 2000);
+  }
+
+  /* =============== TRANSMISIÓN DEL AGENTE 04 (máquina de escribir) =============== */
+  const MSG = "> [TRANSMISIÓN ENTRANTE - AGENTE 04]: Qué rápido crecisteis desde aquellos días en el colegio... Creéis que vais a cazar a un monstruo dentro de ese servidor, pero cuando caiga la sombra de El Panteón, descubriréis quién encendió la mecha la primera vez.";
+  function startTx(){
+    const el = $("tx"); el.textContent = ""; let i = 0;
+    (function step(){
+      if(i >= MSG.length) return;
+      const ch = MSG[i++]; el.textContent += ch;
+      if(i % 2 === 0) tone(1200+Math.random()*400, .02, "square", .015);
+      setTimeout(step, (ch==="." || ch===",") ? 260 : 28 + Math.random()*45);
+    })();
+  }
+
+  /* =============== RASTREAR ORIGEN: pantalla completa =============== */
+  const heart = $("heart"); let hb = null;
+  function openTrace(){ heart.classList.add("on"); sfx.beat(); hb = setInterval(sfx.beat, 660); heart.focus(); }
+  function closeTrace(){ heart.classList.remove("on"); clearInterval(hb); }
+  $("trace").addEventListener("click", openTrace);
+  heart.addEventListener("click", closeTrace);
+  document.addEventListener("keydown", e => { if(e.key==="Escape") closeTrace(); });
+
+  $("f-cred").focus();
+})();
+</script>
+</body>
+</html>
